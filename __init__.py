@@ -1,46 +1,45 @@
-import json
-from cart import dao
-from products import get_product, Product
+from products import dao
 
-class Cart:
-    def __init__(self, id: int, username: str, contents: list[Product], cost: float):
+
+class Product:
+    def __init__(self, id: int, name: str, description: str, cost: float, qty: int = 0):
         self.id = id
-        self.username = username
-        self.contents = contents
+        self.name = name
+        self.description = description
         self.cost = cost
+        self.qty = qty
 
-    @staticmethod
     def load(data):
-        return Cart(
-            id=data['id'],
-            username=data['username'],
-            contents=json.loads(data['contents']),  # Use JSON parsing instead of eval
-            cost=data['cost']
-        )
+        return Product(data['id'], data['name'], data['description'], data['cost'], data['qty'])
 
-def get_cart(username: str) -> list[Product]:
-    cart_details = dao.get_cart(username)
-    if not cart_details:
-        return []
 
-    items = []
-    for cart_detail in cart_details:
-        # Parse JSON safely instead of eval
-        try:
-            contents = json.loads(cart_detail['contents'])
-        except json.JSONDecodeError:
-            continue
-        
-        # Retrieve product details for each item
-        items.extend([get_product(product_id) for product_id in contents])
+#for browse optimization
+def list_products() -> list[dict]:
+    """
+    Fetch and return all products as a list of dictionaries for direct rendering.
+    This avoids unnecessary object creation for the purpose of browsing.
+    """
+    # Fetch products from the DAO in a single, efficient query
+    products = dao.list_products()
 
-    return items
+    # Return the raw product data directly (no need for Product.load here)
+    return products
 
-def add_to_cart(username: str, product_id: int):
-    dao.add_to_cart(username, product_id)
 
-def remove_from_cart(username: str, product_id: int):
-    dao.remove_from_cart(username, product_id)
 
-def delete_cart(username: str):
-    dao.delete_cart(username)
+
+
+def get_product(product_id: int) -> Product:
+    return Product.load(dao.get_product(product_id))
+
+
+def add_product(product: dict):
+    dao.add_product(product)
+
+
+def update_qty(product_id: int, qty: int):
+    if qty < 0:
+        raise ValueError('Quantity cannot be negative')
+    dao.update_qty(product_id, qty)
+
+
